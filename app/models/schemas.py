@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import Any, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -30,6 +31,28 @@ class ChunkSchema(BaseModel):
     page_number: int
     chunk_index: int
     metadata: dict = Field(default_factory=dict)
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=1000)
+    top_k: int = Field(default=5, ge=1, le=20)
+    score_threshold: float = Field(default=0.0, ge=0.0, le=1.0)
+    document_id: Optional[str] = None
+
+
+class SearchResultItem(BaseModel):
+    chunk_id: str
+    document_id: str
+    text: str
+    page_number: int
+    score: float
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: list[SearchResultItem] = Field(default_factory=list)
+    total: int
 
 
 class ErrorResponse(BaseModel):
