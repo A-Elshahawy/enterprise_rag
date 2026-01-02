@@ -1,13 +1,17 @@
+"""Document ingestion endpoints."""
+
 import logging
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from app.core.document_processor import DocumentProcessor
+from app.core.embeddings import get_embedding_service
+from app.core.vector_store import get_vector_store
 from app.models.schemas import IngestResponse, ErrorResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
 
-# Initialize processor
+# Initialize services
 processor = DocumentProcessor()
 
 
@@ -20,13 +24,13 @@ async def ingest_document(
     file: UploadFile = File(..., description="PDF file to ingest"),
 ) -> IngestResponse:
     """
-    Ingest a PDF document: extract text and create chunks.
+    Ingest a PDF document: extract, chunk, embed, and store.
 
-    - Extracts text from all pages
-    - Splits into overlapping chunks (1000 chars, 200 overlap)
-    - Returns document ID and chunk count
-
-    Note: Step 3 will add embedding and vector storage.
+    Pipeline:
+    1. Extract text from PDF pages
+    2. Split into overlapping chunks
+    3. Generate embeddings (Sentence Transformers)
+    4. Store in Qdrant vector database
     """
     # Validate file type
     if not file.filename.lower().endswith(".pdf"):
@@ -38,17 +42,16 @@ async def ingest_document(
         )
 
     try:
-        # Read file content
+        # Read file
         pdf_bytes = await file.read()
         file_size = len(pdf_bytes)
 
         if file_size == 0:
             raise HTTPException(status_code=400, detail="Empty file")
-
-        if file_size > 50 * 1024 * 1024:  # 50MB limit
+        if file_size > 50 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="File too large (max 50MB)")
 
-        # Process PDF
+        # Step 2: Process PDF → chunks
         document_id, chunks, page_count = processor.process_pdf(
             pdf_bytes=pdf_bytes,
             filename=file.filename,
@@ -57,19 +60,28 @@ async def ingest_document(
         if not chunks:
             raise HTTPException(status_code=400, detail="No text content found in PDF")
 
+        # Step 3: Generate embeddings
+        embedding_service = get_embedding_service()
+        texts = [chunk.text for chunk in chunks]
+        embeddings = embedding_service.embed_texts(texts)
+
+        logger.info(f"Generated {len(embeddings)} embeddings for '{file.filename}'")
+
+        # Step 3: Store in Qdrant
+        vector_store = get_vector_store()
+        stored_count = vector_store.upsert_chunks(chunks, embeddings)
+
         logger.info(
             f"Ingested '{file.filename}': id={document_id}, "
-            f"pages={page_count}, chunks={len(chunks)}"
+            f"pages={page_count}, chunks={stored_count}"
         )
-
-        # ? Step 3 will add embedding + Qdrant storage here
 
         return IngestResponse(
             document_id=document_id,
             filename=file.filename,
-            chunks=len(chunks),
+            chunks=stored_count,
             pages=page_count,
-            message=f"Document processed: {len(chunks)} chunks from {page_count} pages",
+            message=f"Document ingested: {stored_count} chunks embedded and stored",
         )
 
     except HTTPException:
@@ -81,12 +93,29 @@ async def ingest_document(
         )
 
 
+@router.delete("/{document_id}")
+async def delete_document(document_id: str) -> dict:
+    """Delete a document and all its chunks from the vector store."""
+    try:
+        vector_store = get_vector_store()
+        vector_store.delete_document(document_id)
+        return {"message": f"Document '{document_id}' deleted"}
+    except Exception as e:
+        logger.exception(f"Failed to delete document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/status")
 async def ingestion_status() -> dict:
-    """Get ingestion service status."""
+    """Get ingestion service status and collection info."""
+    embedding_service = get_embedding_service()
+    vector_store = get_vector_store()
+
     return {
         "status": "ready",
         "chunk_size": processor.chunk_size,
         "chunk_overlap": processor.chunk_overlap,
-        "supported_formats": ["pdf"],
+        "embedding_model": embedding_service.model_name,
+        "embedding_dimension": embedding_service.dimension,
+        "collection": vector_store.get_collection_info(),
     }
