@@ -19,3 +19,6 @@ qdrant-client==1.16.2
 # LLM & Document Processing
 google-genai==1.56.0
 pypdf==6.5.0
+
+# Code Quality
+pre-commit==4.5.1
