@@ -1,6 +1,6 @@
 import logging
-from typing import List
 from functools import lru_cache
+from typing import List
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
@@ -36,9 +36,7 @@ class VectorStore:
                     host=settings.qdrant_host,
                     port=settings.qdrant_port,
                 )
-                logger.info(
-                    f"Connected to local Qdrant: {settings.qdrant_host}:{settings.qdrant_port}"
-                )
+                logger.info(f"Connected to local Qdrant: {settings.qdrant_host}:{settings.qdrant_port}")
         return self._client
 
     def ensure_collection(self) -> None:

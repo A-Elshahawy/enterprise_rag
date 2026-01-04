@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes import health
 from app.config import get_settings
 from app.utils.logging import setup_logging
-from app.api.routes import health
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
+        host="0.0.0.0",  # noqa: S104
         port=8000,
         reload=True,
     )

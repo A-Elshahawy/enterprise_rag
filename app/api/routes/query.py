@@ -1,13 +1,20 @@
+"""Query endpoints for semantic search and RAG."""
+
 import logging
-from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
+from fastapi import APIRouter, HTTPException, Query
+
+from app.core.generator import get_generator
 from app.core.retriever import get_retriever
 from app.models.schemas import (
+    AskRequest,
+    AskResponse,
+    ErrorResponse,
     SearchRequest,
     SearchResponse,
     SearchResultItem,
-    ErrorResponse,
+    SourceCitation,
 )
 
 logger = logging.getLogger(__name__)
@@ -74,3 +81,57 @@ async def search_get(
         document_id=document_id,
     )
     return await search(request)
+
+
+@router.post(
+    "/ask",
+    response_model=AskResponse,
+    responses={500: {"model": ErrorResponse}},
+)
+async def ask(request: AskRequest) -> AskResponse:
+    """
+    RAG endpoint: Retrieve relevant context and generate grounded answer.
+
+    Pipeline:
+    1. Semantic search for relevant chunks
+    2. Generate answer using Gemini with retrieved context
+    3. Return answer with source citations
+    """
+    try:
+        # Retrieve context
+        retriever = get_retriever()
+        context = retriever.search(
+            query=request.question,
+            top_k=request.top_k,
+            document_id=request.document_id,
+        )
+
+        if not context:
+            return AskResponse(
+                question=request.question,
+                answer="No relevant information found in the knowledge base.",
+                sources=[],
+                model="none",
+            )
+
+        # Generate answer
+        generator = get_generator()
+        result = generator.generate(
+            query=request.question,
+            context=context,
+            temperature=request.temperature,
+        )
+
+        return AskResponse(
+            question=request.question,
+            answer=result.answer,
+            sources=[SourceCitation(**src) for src in result.sources],
+            model=result.model,
+        )
+
+    except ValueError as e:
+        # API key not configured
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Ask failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

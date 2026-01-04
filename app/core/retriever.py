@@ -1,6 +1,6 @@
 import logging
-from typing import List, Optional
 from dataclasses import dataclass
+from typing import List, Optional
 
 from qdrant_client.http import models
 
@@ -83,11 +83,7 @@ class Retriever:
                     text=payload.get("text", ""),
                     page_number=payload.get("page_number", 0),
                     score=hit.score,
-                    metadata={
-                        k: v
-                        for k, v in payload.items()
-                        if k not in ("document_id", "text", "page_number")
-                    },
+                    metadata={k: v for k, v in payload.items() if k not in ("document_id", "text", "page_number")},
                 )
             )
 

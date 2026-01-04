@@ -1,6 +1,6 @@
 import logging
-from typing import List
 from functools import lru_cache
+from typing import List
 
 from sentence_transformers import SentenceTransformer
 
@@ -44,7 +44,7 @@ class EmbeddingService:
         embeddings = self.model.encode(
             texts,
             batch_size=batch_size,
-            show_progress_bar=len(texts) > 100,
+            show_progress_bar=len(texts) > 100,  # noqa: PLR2004
             convert_to_numpy=True,
         )
         return embeddings.tolist()

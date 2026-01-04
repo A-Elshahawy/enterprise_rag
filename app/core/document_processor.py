@@ -1,7 +1,7 @@
 import hashlib
 import logging
-from typing import List, Tuple
 from dataclasses import dataclass
+from typing import List, Tuple
 
 from pypdf import PdfReader
 
@@ -165,9 +165,7 @@ class DocumentProcessor:
             all_chunks.extend(page_chunks)
             chunk_index += len(page_chunks)
 
-        logger.info(
-            f"Processed '{filename}': {page_count} pages, {len(all_chunks)} chunks"
-        )
+        logger.info(f"Processed '{filename}': {page_count} pages, {len(all_chunks)} chunks")
 
         return document_id, all_chunks, page_count
 

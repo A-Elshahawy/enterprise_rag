@@ -21,3 +21,22 @@ dependencies = [
     "sentence-transformers==5.2.0",
     "uvicorn[standard]==0.40.0",
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes errors
+    "C",  # flake8-comprehensions errors
+    "I",  # isort errors
+    "N",  # flake8-bandit errors
+    "S",  # flake8-string-format errors
+    "PL",  # pylint errors
+]
+ignore = [
+    "F401"
+]

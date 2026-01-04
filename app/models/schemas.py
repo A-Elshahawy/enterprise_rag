@@ -55,6 +55,28 @@ class SearchResponse(BaseModel):
     total: int
 
 
+class AskRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=2000)
+    top_k: int = Field(default=5, ge=1, le=20)
+    document_id: Optional[str] = None
+    temperature: float = Field(default=0.3, ge=0.0, le=1.0)
+
+
+class SourceCitation(BaseModel):
+    source_id: int
+    document_id: str
+    page_number: int
+    text_preview: str
+    relevance_score: float
+
+
+class AskResponse(BaseModel):
+    question: str
+    answer: str
+    sources: list[SourceCitation] = Field(default_factory=list)
+    model: str
+
+
 class ErrorResponse(BaseModel):
     """Error response schema."""
 

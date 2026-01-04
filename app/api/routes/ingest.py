@@ -1,12 +1,13 @@
 """Document ingestion endpoints."""
 
 import logging
-from fastapi import APIRouter, UploadFile, File, HTTPException
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.core.document_processor import DocumentProcessor
 from app.core.embeddings import get_embedding_service
 from app.core.vector_store import get_vector_store
-from app.models.schemas import IngestResponse, ErrorResponse
+from app.models.schemas import ErrorResponse, IngestResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
@@ -37,9 +38,7 @@ async def ingest_document(
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
     if not file.content_type or "pdf" not in file.content_type.lower():
-        raise HTTPException(
-            status_code=400, detail=f"Invalid content type: {file.content_type}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid content type: {file.content_type}")
 
     try:
         # Read file
@@ -71,10 +70,7 @@ async def ingest_document(
         vector_store = get_vector_store()
         stored_count = vector_store.upsert_chunks(chunks, embeddings)
 
-        logger.info(
-            f"Ingested '{file.filename}': id={document_id}, "
-            f"pages={page_count}, chunks={stored_count}"
-        )
+        logger.info(f"Ingested '{file.filename}': id={document_id}, " f"pages={page_count}, chunks={stored_count}")
 
         return IngestResponse(
             document_id=document_id,
@@ -88,9 +84,7 @@ async def ingest_document(
         raise
     except Exception as e:
         logger.exception(f"Failed to process {file.filename}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to process document: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to process document: {str(e)}")
 
 
 @router.delete("/{document_id}")
