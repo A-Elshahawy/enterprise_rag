@@ -4,7 +4,7 @@ uvicorn[standard]==0.40.0
 pydantic==2.12.5
 pydantic-settings==2.12.0
 python-dotenv==1.2.1
-
+slowapi==0.1.9
 # LangChain
 langchain==1.2.0
 langchain-core==1.2.5
