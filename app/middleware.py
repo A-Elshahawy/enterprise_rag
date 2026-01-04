@@ -7,7 +7,7 @@ from fastapi import HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .app.config import get_settings
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
