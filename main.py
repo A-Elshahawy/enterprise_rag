@@ -8,15 +8,15 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from .app.api.routes import health, ingest, query
-from .app.config import get_settings
-from .app.exceptions import (
+from app.api.routes import health, ingest, query
+from app.config import get_settings
+from app.exceptions import (
     generic_exception_handler,
     http_exception_handler,
     validation_exception_handler,
 )
-from .app.middleware import APIKeyMiddleware, LoggingMiddleware, RequestIDMiddleware
-from .app.utils import setup_logging
+from app.middleware import APIKeyMiddleware, LoggingMiddleware, RequestIDMiddleware
+from app.utils import setup_logging
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
 
     # Validate Qdrant connection on startup
     try:
-        from app.core.vector_store import get_vector_store
+        from app.core.vector_store import get_vector_store  # noqa: PLC0415
 
         vs = get_vector_store()
         vs.ensure_collection()
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "app.main:app",
+        app,
         host="0.0.0.0",  # noqa: S104
         port=8000,
         reload=True,

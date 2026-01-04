@@ -3,6 +3,7 @@ from .schemas import (
     AskResponse,
     DocumentMetadata,
     ErrorResponse,
+    IngestResponse,
     SearchRequest,
     SearchResponse,
     SearchResultItem,
