@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise RAG</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+        h2 { font-size: 1.25rem; margin-bottom: 1rem; margin-top: 0; }
+        .subtitle { color: var(--text-light); font-size: 0.9rem; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .tab {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+        .tab:hover { color: var(--text); }
+        .tab.active {
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Layout */
+        .panel {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        .panel.active { display: block; }
+
+        /* Forms */
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        input[type="text"], input[type="number"], input[type="password"], textarea, select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        textarea { resize: vertical; min-height: 100px; }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        button.secondary { background-color: white; border: 1px solid var(--border); color: var(--text); }
+        button.secondary:hover { background-color: var(--bg); }
+        button.danger { background-color: var(--danger); }
+
+        /* Results */
+        .result-card {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: #fff;
+        }
+        .result-meta {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        .score {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .answer-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            white-space: pre-wrap;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 1rem;
+            border-radius: 4px;
+            color: white;
+            display: none;
+            z-index: 100;
+        }
+        .toast.error { background-color: var(--danger); }
+        .toast.success { background-color: var(--success); }
+
+        #loading { display: none; color: var(--text-light); font-style: italic; margin-top: 0.5rem; }
+        .columns { display: flex; gap: 2rem; }
+        .col { flex: 1; }
+
+        /* Utility */
+        .hidden { display: none; }
+        pre { background: #1e293b; color: #fff; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Enterprise RAG</h1>
+        <div class="subtitle">Ingest PDFs, Search Context, and Generate Answers</div>
+    </header>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('ingest')">Ingest</div>
+        <div class="tab" onclick="switchTab('search')">Search</div>
+        <div class="tab" onclick="switchTab('ask')">Ask (RAG)</div>
+        <div class="tab" onclick="switchTab('settings')">Settings</div>
+    </div>
+
+    <!-- INGEST TAB -->
+    <div id="ingest" class="panel active">
+        <h2>Ingest Document</h2>
+        <p class="subtitle">Upload a PDF to extract text, chunk it, and store embeddings in Qdrant.</p>
+
+        <div class="form-group" style="margin-top: 1.5rem;">
+            <label>Select PDF File</label>
+            <input type="file" id="pdfFile" accept=".pdf">
+        </div>
+
+        <button onclick="handleIngest()" id="btnIngest">Upload & Ingest</button>
+        <span id="ingestLoading" style="display:none; margin-left: 10px;">Processing...</span>
+
+        <div id="ingestResult" class="hidden" style="margin-top: 2rem;">
+            <h3>Result</h3>
+            <pre id="ingestOutput"></pre>
+            <div style="margin-top: 1rem;">
+                <label>Active Document ID:</label>
+                <input type="text" id="activeDocId" readonly style="background: var(--bg);">
+            </div>
+        </div>
+    </div>
+
+    <!-- SEARCH TAB -->
+    <div id="search" class="panel">
+        <h2>Semantic Search</h2>
+        <div class="columns">
+            <div class="col">
+                <div class="form-group">
+                    <label>Query</label>
+                    <textarea id="searchQuery" placeholder="Enter your search query..."></textarea>
+                </div>
+                <div class="columns">
+                    <div class="col">
+                        <label>Top K</label>
+                        <input type="number" id="searchTopK" value="5" min="1" max="20">
+                    </div>
+                    <div class="col">
+                        <label>Score Threshold</label>
+                        <input type="number" id="searchThreshold" value="0.0" step="0.01" min="0" max="1">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>Filter by Document ID (Optional)</label>
+                    <input type="text" id="searchDocId" placeholder="Leave empty to search all">
+                </div>
+                <button onclick="handleSearch()">Search</button>
+            </div>
+            <div class="col">
+                <div id="searchResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ASK TAB -->
+    <div id="ask" class="panel">
+        <h2>Ask Question (RAG)</h2>
+        <div class="columns">
+            <div class="col">
+                <div class="form-group">
+                    <label>Question</label>
+                    <textarea id="askQuery" placeholder="Ask a question based on your documents..."></textarea>
+                </div>
+                <div class="columns">
+                    <div class="col">
+                        <label>Top K Context</label>
+                        <input type="number" id="askTopK" value="5" min="1" max="20">
+                    </div>
+                    <div class="col">
+                        <label>Temperature</label>
+                        <input type="number" id="askTemp" value="0.3" step="0.1" min="0" max="1">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>Filter by Document ID (Optional)</label>
+                    <input type="text" id="askDocId" placeholder="Leave empty for general knowledge">
+                </div>
+                <button onclick="handleAsk()" id="btnAsk">Generate Answer</button>
+                <span id="askLoading" style="display:none; margin-left: 10px;">Thinking...</span>
+            </div>
+        </div>
+
+        <div id="askResult" class="hidden" style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+            <h3>Answer</h3>
+            <div id="answerText" class="answer-box"></div>
+
+            <h4>Sources Used</h4>
+            <div id="askSources"></div>
+        </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="settings" class="panel">
+        <h2>Configuration</h2>
+        <div class="form-group">
+            <label>API Base URL</label>
+            <input type="text" id="apiBaseUrl" value="">
+            <small class="subtitle">Empty uses current origin</small>
+        </div>
+        <div class="form-group">
+            <label>API Key Header</label>
+            <input type="text" id="apiKeyHeader" value="X-API-Key">
+        </div>
+        <div class="form-group">
+            <label>API Key</label>
+            <input type="password" id="apiKey" placeholder="Enter API Key if required">
+        </div>
+        <div class="form-group">
+            <button onclick="checkHealth()" class="secondary">Check API Health</button>
+        </div>
+        <div id="healthResult" class="hidden">
+            <pre id="healthOutput"></pre>
+        </div>
+    </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+    // State
+    const state = {
+        lastDocId: ''
+    };
+
+    // Initialization
+    document.addEventListener('DOMContentLoaded', () => {
+        // Sync document ID inputs
+        const inputs = ['activeDocId', 'searchDocId', 'askDocId'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('change', (e) => {
+                state.lastDocId = e.target.value;
+                updateDocIds(e.target.value);
+            });
+        });
+    });
+
+    function updateDocIds(val) {
+        ['activeDocId', 'searchDocId', 'askDocId'].forEach(id => {
+            document.getElementById(id).value = val;
+        });
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+        document.getElementById(tabId).classList.add('active');
+        document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
+    }
+
+    function getBaseUrl() {
+        const configured = document.getElementById('apiBaseUrl').value.trim();
+        return configured || window.location.origin;
+    }
+
+    function getHeaders(contentType = 'application/json') {
+        const headers = {};
+        if (contentType) headers['Content-Type'] = contentType;
+
+        const keyHeader = document.getElementById('apiKeyHeader').value;
+        const key = document.getElementById('apiKey').value;
+        if (key) {
+            headers[keyHeader] = key;
+        }
+        return headers;
+    }
+
+    function showToast(msg, type = 'success') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = `toast ${type}`;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    // --- API Interactions ---
+
+    async function checkHealth() {
+        try {
+            const res = await fetch(`${getBaseUrl()}/health`, {
+                headers: getHeaders()
+            });
+            const data = await res.json();
+            document.getElementById('healthResult').classList.remove('hidden');
+            document.getElementById('healthOutput').textContent = JSON.stringify(data, null, 2);
+            showToast('Health check completed');
+        } catch (e) {
+            showToast('Health check failed: ' + e.message, 'error');
+        }
+    }
+
+    async function handleIngest() {
+        const fileInput = document.getElementById('pdfFile');
+        if (!fileInput.files[0]) {
+            showToast('Please select a file', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('btnIngest');
+        const loader = document.getElementById('ingestLoading');
+
+        btn.disabled = true;
+        loader.style.display = 'inline';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            // Need to handle headers carefully with FormData (don't set Content-Type manually)
+            const headers = getHeaders(null);
+
+            const res = await fetch(`${getBaseUrl()}/ingest`, {
+                method: 'POST',
+                headers: headers,
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.detail || 'Ingest failed');
+
+            document.getElementById('ingestResult').classList.remove('hidden');
+            document.getElementById('ingestOutput').textContent = JSON.stringify(data, null, 2);
+
+            if (data.document_id) {
+                state.lastDocId = data.document_id;
+                updateDocIds(data.document_id);
+                showToast('Document ingested successfully');
+            }
+        } catch (e) {
+            showToast(e.message, 'error');
+            document.getElementById('ingestOutput').textContent = e.message;
+        } finally {
+            btn.disabled = false;
+            loader.style.display = 'none';
+        }
+    }
+
+    async function handleSearch() {
+        const query = document.getElementById('searchQuery').value;
+        if (!query) return showToast('Enter a query', 'error');
+
+        const body = {
+            query: query,
+            top_k: parseInt(document.getElementById('searchTopK').value),
+            score_threshold: parseFloat(document.getElementById('searchThreshold').value),
+            document_id: document.getElementById('searchDocId').value.trim() || null
+        };
+
+        try {
+            const res = await fetch(`${getBaseUrl()}/query/search`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(body)
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Search failed');
+
+            renderSearchResults(data.results);
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    function renderSearchResults(results) {
+        const container = document.getElementById('searchResults');
+        container.innerHTML = '';
+
+        if (!results || results.length === 0) {
+            container.innerHTML = '<div class="result-card">No results found.</div>';
+            return;
+        }
+
+        results.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'result-card';
+            div.innerHTML = `
+                <div class="result-meta">
+                    <span class="score">Score: ${r.score.toFixed(3)}</span>
+                    <span>Page ${r.page_number}</span>
+                </div>
+                <div style="font-size: 0.95rem;">${r.text}</div>
+                <div style="margin-top:0.5rem; font-size:0.8rem; color:#666;">Chunk ID: ${r.chunk_id}</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    async function handleAsk() {
+        const question = document.getElementById('askQuery').value;
+        if (!question) return showToast('Enter a question', 'error');
+
+        const btn = document.getElementById('btnAsk');
+        const loader = document.getElementById('askLoading');
+
+        btn.disabled = true;
+        loader.style.display = 'inline';
+        document.getElementById('askResult').classList.add('hidden');
+
+        const body = {
+            question: question,
+            top_k: parseInt(document.getElementById('askTopK').value),
+            temperature: parseFloat(document.getElementById('askTemp').value),
+            document_id: document.getElementById('askDocId').value.trim() || null
+        };
+
+        try {
+            const res = await fetch(`${getBaseUrl()}/query/ask`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(body)
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Request failed');
+
+            document.getElementById('askResult').classList.remove('hidden');
+            document.getElementById('answerText').textContent = data.answer;
+            renderSources(data.sources, 'askSources');
+
+        } catch (e) {
+            showToast(e.message, 'error');
+        } finally {
+            btn.disabled = false;
+            loader.style.display = 'none';
+        }
+    }
+
+    function renderSources(sources, elementId) {
+        const container = document.getElementById(elementId);
+        container.innerHTML = '';
+
+        if (!sources || sources.length === 0) {
+            container.innerHTML = '<i>No sources used.</i>';
+            return;
+        }
+
+        sources.forEach(s => {
+            const div = document.createElement('div');
+            div.className = 'result-card';
+            div.style.background = '#f8fafc';
+            div.innerHTML = `
+                <div class="result-meta">
+                    <span class="score">Rel: ${s.relevance_score.toFixed(3)}</span>
+                    <span>Doc: ${s.document_id.substring(0,8)}... (Page ${s.page_number})</span>
+                </div>
+                <div style="font-size: 0.9rem; color: #334155;">${s.text_preview}</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+</script>
+
+</body>
+</html>

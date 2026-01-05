@@ -1,9 +1,13 @@
 import logging
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -30,10 +34,6 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     setup_logging(debug=settings.debug)
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
-    logger.info(f"Debug mode: {settings.debug}")
-    logger.info(f"Qdrant: {settings.get_qdrant_url()} (cloud: {settings.is_qdrant_cloud})")
-    logger.info(f"Rate limit: {settings.rate_limit_requests}/{settings.rate_limit_window}s")
-    logger.info(f"API key auth: {'enabled' if settings.api_key else 'disabled'}")
 
     # Validate Qdrant connection on startup
     try:
@@ -54,16 +54,15 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
-        description="Enterprise RAG Platform - PDF ingestion, retrieval, and grounded answers",
+        description="Enterprise RAG Platform",
         docs_url="/docs" if settings.debug else None,
         redoc_url="/redoc" if settings.debug else None,
         lifespan=lifespan,
     )
 
-    # Rate limiter state
     app.state.limiter = limiter
 
-    # Add middleware (order matters - first added = last executed)
+    # Middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
@@ -81,10 +80,20 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_exception_handler(Exception, generic_exception_handler)
 
-    # Include routers
+    # API Routers
     app.include_router(health.router)
     app.include_router(ingest.router)
     app.include_router(query.router)
+
+    # Static Files (Frontend)
+    # Ensure the static directory exists
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+        @app.get("/", include_in_schema=False)
+        async def read_root():
+            return FileResponse(static_dir / "index.html")
 
     return app
 
@@ -95,9 +104,4 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        app,
-        host="0.0.0.0",  # noqa: S104
-        port=8000,
-        reload=True,
-    )
+    uvicorn.run(app, port=8000, reload=True)
