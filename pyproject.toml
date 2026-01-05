@@ -1,7 +1,7 @@
 [project]
 name = "enterprise-rag"
 version = "0.1.0"
-description = "Enterprise RAG"
+description = "Enterprise RAG is a small end‑to‑end Retrieval‑Augmented Generation (RAG) system: a small, open‑source, and cost‑effective solution for enterprise knowledge retrieval and question‑answering."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

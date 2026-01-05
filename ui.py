@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from io import BytesIO
 from typing import Any, Optional
 
 import altair as alt
@@ -647,7 +648,9 @@ def _user_ingest() -> None:
 
     if ingest_clicked and uploaded is not None:
         with st.spinner("Uploading and processing..."):
-            files = {"file": (uploaded.name, uploaded.getvalue(), "application/pdf")}
+            # Use BytesIO to wrap the uploaded file content
+            pdf_bytes = BytesIO(uploaded.getvalue())
+            files = {"file": (uploaded.name, pdf_bytes, "application/pdf")}
             code, payload, hdrs = _request_json("POST", "/ingest", files=files)
 
         if 200 <= code < 300:
