@@ -116,18 +116,18 @@ wheels = [
 
 [[package]]
 name = "altair"
-version = "5.5.0"
+version = "6.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jinja2" },
     { name = "jsonschema" },
     { name = "narwhals" },
     { name = "packaging" },
-    { name = "typing-extensions", marker = "python_full_version < '3.14'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.15'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/16/b1/f2969c7bdb8ad8bbdda031687defdce2c19afba2aa2c8e1d2a17f78376d8/altair-5.5.0.tar.gz", hash = "sha256:d960ebe6178c56de3855a68c47b516be38640b73fb3b5111c2a9ca90546dd73d", size = 705305 }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/c0/184a89bd5feba14ff3c41cfaf1dd8a82c05f5ceedbc92145e17042eb08a4/altair-6.0.0.tar.gz", hash = "sha256:614bf5ecbe2337347b590afb111929aa9c16c9527c4887d96c9bc7f6640756b4", size = 763834 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/aa/f3/0b6ced594e51cc95d8c1fc1640d3623770d01e4969d29c0bd09945fafefa/altair-5.5.0-py3-none-any.whl", hash = "sha256:91a310b926508d560fe0148d02a194f38b824122641ef528113d029fcd129f8c", size = 731200 },
+    { url = "https://files.pythonhosted.org/packages/db/33/ef2f2409450ef6daa61459d5de5c08128e7d3edb773fefd0a324d1310238/altair-6.0.0-py3-none-any.whl", hash = "sha256:09ae95b53d5fe5b16987dccc785a7af8588f2dca50de1e7a156efa8a461515f8", size = 795410 },
 ]
 
 [[package]]
@@ -348,7 +348,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "altair", specifier = ">=5.0,<6" },
+    { name = "altair", specifier = "==6.0.0" },
     { name = "fastapi", specifier = "==0.115.6" },
     { name = "google-genai", specifier = "==1.56.0" },
     { name = "langchain", specifier = "==1.2.0" },
@@ -356,7 +356,7 @@ requires-dist = [
     { name = "langchain-core", specifier = "==1.2.5" },
     { name = "langchain-google-genai", specifier = "==4.1.2" },
     { name = "langchain-qdrant", specifier = "==1.1.0" },
-    { name = "pandas", specifier = ">=2.2,<3" },
+    { name = "pandas", specifier = "==2.3.3" },
     { name = "pre-commit", specifier = "==4.5.1" },
     { name = "pydantic", specifier = "==2.12.5" },
     { name = "pydantic-settings", specifier = "==2.12.0" },
@@ -367,7 +367,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.31,<3" },
     { name = "sentence-transformers", specifier = "==5.2.0" },
     { name = "slowapi", specifier = "==0.1.9" },
-    { name = "streamlit", specifier = ">=1.34,<2" },
+    { name = "streamlit", specifier = "==1.52.2" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.40.0" },
 ]
 
