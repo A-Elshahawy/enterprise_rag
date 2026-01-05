@@ -70,7 +70,7 @@ async def ingest_document(
         vector_store = get_vector_store()
         stored_count = vector_store.upsert_chunks(chunks, embeddings)
 
-        logger.info(f"Ingested '{file.filename}': id={document_id}, " f"pages={page_count}, chunks={stored_count}")
+        logger.info(f"Ingested '{file.filename}': id={document_id}, pages={page_count}, chunks={stored_count}")
 
         return IngestResponse(
             document_id=document_id,

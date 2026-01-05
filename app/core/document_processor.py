@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from dataclasses import dataclass
+from io import BytesIO
 from typing import List, Tuple
 
 from pypdf import PdfReader
@@ -41,7 +42,6 @@ class DocumentProcessor:
         Returns:
             List of (page_number, text) tuples (1-indexed)
         """
-        from io import BytesIO
 
         reader = PdfReader(BytesIO(pdf_bytes))
         pages = []

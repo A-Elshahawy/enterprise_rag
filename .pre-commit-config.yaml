@@ -4,7 +4,7 @@ default_stages: [pre-commit]
 repos:
   # 1. Standard Hooks for general file cleanliness and security
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -20,7 +20,7 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.6  # Verify for the latest version
+    rev: v0.14.10  # Verify for the latest version
     hooks:
       # Run the linter.
       - id: ruff
@@ -30,7 +30,7 @@ repos:
 
   # 3. Mypy (Static Type Checker)
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.1
+    rev: v1.19.1
     hooks:
       - id: mypy
         additional_dependencies: [types-requests, pydantic]

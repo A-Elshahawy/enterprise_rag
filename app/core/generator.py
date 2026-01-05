@@ -28,7 +28,7 @@ class Generator:
 
     def __init__(self):
         self._client = None
-        self.model_name = "gemini-2.0-flash-exp"
+        self.model_name = "gemini-2.5-flash"
 
     @property
     def client(self) -> genai.Client:
@@ -63,7 +63,7 @@ class Generator:
         context_parts = []
         for i, chunk in enumerate(context, 1):
             context_parts.append(
-                f"[Source {i}] (Document: {chunk.document_id}, Page: {chunk.page_number})\n" f"{chunk.text}"
+                f"[Source {i}] (Document: {chunk.document_id}, Page: {chunk.page_number})\n{chunk.text}"
             )
         context_str = "\n\n".join(context_parts)
 

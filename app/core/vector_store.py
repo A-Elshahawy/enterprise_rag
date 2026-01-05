@@ -1,4 +1,5 @@
 import logging
+import uuid
 from functools import lru_cache
 from typing import List
 
@@ -82,9 +83,10 @@ class VectorStore:
 
         points = [
             models.PointStruct(
-                id=chunk.chunk_id,
+                id=str(uuid.uuid5(uuid.NAMESPACE_URL, chunk.chunk_id)),
                 vector=embedding,
                 payload={
+                    "chunk_id": chunk.chunk_id,
                     "document_id": chunk.document_id,
                     "text": chunk.text,
                     "page_number": chunk.page_number,

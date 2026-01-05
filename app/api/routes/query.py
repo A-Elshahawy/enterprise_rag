@@ -57,6 +57,8 @@ async def search(request: SearchRequest) -> SearchResponse:
             total=len(results),
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Search failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -130,8 +132,9 @@ async def ask(request: AskRequest) -> AskResponse:
         )
 
     except ValueError as e:
-        # API key not configured
         raise HTTPException(status_code=503, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Ask failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -64,13 +64,29 @@ class Retriever:
             )
 
         # Search Qdrant
-        results = self.vector_store.client.search(
-            collection_name=self.vector_store.collection_name,
-            query_vector=query_embedding,
-            query_filter=query_filter,
-            limit=top_k,
-            score_threshold=score_threshold,
-        )
+        client = self.vector_store.client
+
+        if hasattr(client, "query_points"):
+            response = client.query_points(
+                collection_name=self.vector_store.collection_name,
+                query=query_embedding,
+                query_filter=query_filter,
+                limit=top_k,
+                score_threshold=score_threshold,
+                with_payload=True,
+            )
+            results = response.points if hasattr(response, "points") else response
+        elif hasattr(client, "search"):
+            results = client.search(
+                collection_name=self.vector_store.collection_name,
+                query_vector=query_embedding,
+                query_filter=query_filter,
+                limit=top_k,
+                score_threshold=score_threshold,
+                with_payload=True,
+            )
+        else:
+            raise AttributeError("Qdrant client does not support query_points or search")
 
         # Convert to SearchResult
         search_results = []
@@ -78,12 +94,14 @@ class Retriever:
             payload = hit.payload or {}
             search_results.append(
                 SearchResult(
-                    chunk_id=str(hit.id),
+                    chunk_id=payload.get("chunk_id") or str(hit.id),
                     document_id=payload.get("document_id", ""),
                     text=payload.get("text", ""),
                     page_number=payload.get("page_number", 0),
                     score=hit.score,
-                    metadata={k: v for k, v in payload.items() if k not in ("document_id", "text", "page_number")},
+                    metadata={
+                        k: v for k, v in payload.items() if k not in ("chunk_id", "document_id", "text", "page_number")
+                    },
                 )
             )
 

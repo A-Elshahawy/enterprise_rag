@@ -24,3 +24,9 @@ pypdf==6.5.0
 
 # Code Quality
 pre-commit==4.5.1
+
+# UI
+streamlit>=1.34,<2
+requests>=2.31,<3
+pandas>=2.2,<3
+altair>=5.0,<6
