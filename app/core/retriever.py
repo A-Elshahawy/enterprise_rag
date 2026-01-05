@@ -35,6 +35,7 @@ class Retriever:
         top_k: int = 5,
         score_threshold: float = 0.0,
         document_id: Optional[str] = None,
+        document_ids: Optional[List[str]] = None,
     ) -> List[SearchResult]:
         """
         Semantic search for relevant chunks.
@@ -53,7 +54,18 @@ class Retriever:
 
         # Build filter
         query_filter = None
-        if document_id:
+        ids = [d.strip() for d in (document_ids or []) if d and d.strip()]
+        if ids:
+            query_filter = models.Filter(
+                should=[
+                    models.FieldCondition(
+                        key="document_id",
+                        match=models.MatchValue(value=d),
+                    )
+                    for d in ids
+                ]
+            )
+        elif document_id:
             query_filter = models.Filter(
                 must=[
                     models.FieldCondition(

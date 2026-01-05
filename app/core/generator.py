@@ -44,7 +44,7 @@ class Generator:
         self,
         query: str,
         context: List[SearchResult],
-        max_tokens: int = 1024,
+        max_tokens: int = 2096,
         temperature: float = 0.3,
     ) -> GeneratedAnswer:
         """

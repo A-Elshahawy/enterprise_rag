@@ -39,6 +39,7 @@ async def search(request: SearchRequest) -> SearchResponse:
             top_k=request.top_k,
             score_threshold=request.score_threshold,
             document_id=request.document_id,
+            document_ids=request.document_ids,
         )
 
         return SearchResponse(
@@ -74,6 +75,7 @@ async def search_get(
     top_k: int = Query(default=5, ge=1, le=20),
     score_threshold: float = Query(default=0.0, ge=0.0, le=1.0),
     document_id: Optional[str] = Query(default=None),
+    document_ids: Optional[list[str]] = Query(default=None),
 ) -> SearchResponse:
     """GET endpoint for semantic search (convenience)."""
     request = SearchRequest(
@@ -81,6 +83,7 @@ async def search_get(
         top_k=top_k,
         score_threshold=score_threshold,
         document_id=document_id,
+        document_ids=document_ids,
     )
     return await search(request)
 
@@ -106,6 +109,7 @@ async def ask(request: AskRequest) -> AskResponse:
             query=request.question,
             top_k=request.top_k,
             document_id=request.document_id,
+            document_ids=request.document_ids,
         )
 
         if not context:

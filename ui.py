@@ -27,8 +27,18 @@ def _get_config_value(key: str, default: str = "") -> str:
 
 
 def _default_api_base_url() -> str:
-    """Get the API base URL from Streamlit secrets/env or fallback to localhost."""
     return _get_config_value("RAG_API_URL", "http://localhost:8000").rstrip("/")
+
+
+def _normalize_api_base_url(raw: str) -> str:
+    value = (raw or "").strip()
+    if not value:
+        return _default_api_base_url()
+
+    if not (value.startswith("http://") or value.startswith("https://")):
+        value = f"http://{value}"
+
+    return value.rstrip("/")
 
 
 def _require_auth() -> None:
@@ -62,6 +72,7 @@ def _require_auth() -> None:
 def _cached_health(base_url: str, headers: dict[str, str], timeout_s: float) -> tuple[bool, Any]:
     """Cache health calls briefly to keep the UI responsive."""
     try:
+        base_url = _normalize_api_base_url(base_url)
         r = requests.get(f"{base_url}/health", headers=headers, timeout=timeout_s)
         return r.ok, r.json() if r.headers.get("content-type", "").startswith("application/json") else r.text
     except Exception as e:
@@ -89,6 +100,9 @@ def _init_session_state() -> None:
     for key, default in defaults.items():
         st.session_state.setdefault(key, default)
 
+    # Normalize even if user edited it in the UI or a previous session value exists
+    st.session_state.api_base_url = _normalize_api_base_url(str(st.session_state.api_base_url))
+
 
 def _http_headers() -> dict[str, str]:
     """Build request headers including optional API key."""
@@ -108,7 +122,7 @@ def _request_json(
     files: Optional[dict[str, Any]] = None,
 ) -> tuple[int, Any, dict[str, str]]:
     """Call the FastAPI backend and return (status_code, parsed_body, response_headers)."""
-    base_url = st.session_state.api_base_url.rstrip("/")
+    base_url = _normalize_api_base_url(str(st.session_state.api_base_url))
     url = f"{base_url}{path}"
     headers = _http_headers()
 
@@ -446,7 +460,7 @@ def _render_search_results() -> None:
                     st.json(item.get("metadata") or {})
 
 
-def _page_search() -> None:
+def _page_search() -> None:  # noqa: PLR0915
     """Search page: semantic retrieval over ingested chunks."""
     st.subheader("Semantic Search", help="Retrieves the most relevant chunks based on your query.")
     st.caption("Endpoint: POST /query/search (or GET /query/search)")
@@ -714,27 +728,38 @@ def _user_ask(options: list[tuple[str, str]], label_to_id: dict[str, str]) -> No
         )
     )
 
-    limit_to_doc = st.checkbox(
-        "Limit to one document",
-        value=False,
-        key="user_limit_to_doc",
-        disabled=not bool(options),
+    scope = st.radio(
+        "Knowledge base",
+        options=["Files at hand", "General knowledge"],
+        horizontal=True,
+        key="user_scope_mode",
+        index=0 if options else 1,
+        help="Files at hand limits answers to PDFs you uploaded in this session (NotebookLM-style).",
     )
 
-    ask_document_id: Optional[str] = None
-    if limit_to_doc and options:
-        selected_label = st.selectbox(
-            "Which document?",
-            options=[label for label, _ in options],
-            key="user_scope_select",
-        )
-        ask_document_id = label_to_id.get(selected_label)
+    document_ids: Optional[list[str]] = None
+    if scope == "Files at hand":
+        if not options:
+            st.info("Upload a PDF first to use Files at hand.", icon="ℹ️")
+        else:
+            labels = [label for label, _ in options]
+            selected_labels = st.multiselect(
+                "Use these documents",
+                options=labels,
+                default=labels,
+                key="user_scope_docs",
+            )
+            document_ids = [label_to_id[lbl] for lbl in selected_labels if lbl in label_to_id]
+            if not document_ids:
+                st.warning("Select at least one document, or switch to General knowledge.")
+
+    ask_disabled = (not question.strip()) or (scope == "Files at hand" and not (document_ids or []))
 
     run = st.button(
         "Ask",
         type="primary",
         use_container_width=True,
-        disabled=not question.strip(),
+        disabled=ask_disabled,
         key="user_ask_button",
     )
 
@@ -742,7 +767,8 @@ def _user_ask(options: list[tuple[str, str]], label_to_id: dict[str, str]) -> No
         body: dict[str, Any] = {
             "question": question,
             "top_k": top_k,
-            "document_id": ask_document_id,
+            "document_id": None,
+            "document_ids": document_ids if scope == "Files at hand" else None,
             "temperature": temperature,
         }
         with st.spinner("Answering..."):
@@ -769,7 +795,7 @@ def _user_ask(options: list[tuple[str, str]], label_to_id: dict[str, str]) -> No
                         st.write(src.get("text_preview") or "")
 
 
-def _page_user() -> None:
+def _page_user() -> None:  # noqa: C901, PLR0912, PLR0915
     st.subheader("Ask, ingest, and delete")
 
     left, right = st.columns([1, 1], vertical_alignment="top")
