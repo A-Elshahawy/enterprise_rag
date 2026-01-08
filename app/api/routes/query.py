@@ -31,6 +31,7 @@ async def search(request: SearchRequest) -> SearchResponse:
     Semantic search across ingested documents.
 
     Returns chunks most similar to the query, ranked by relevance score.
+    Supports filtering by single document_id or multiple document_ids.
     """
     try:
         retriever = get_retriever()
@@ -51,6 +52,8 @@ async def search(request: SearchRequest) -> SearchResponse:
                     text=r.text,
                     page_number=r.page_number,
                     score=r.score,
+                    char_start=r.char_start,
+                    char_end=r.char_end,
                     metadata=r.metadata,
                 )
                 for r in results
@@ -74,8 +77,8 @@ async def search_get(
     q: str = Query(..., min_length=1, max_length=1000, description="Search query"),
     top_k: int = Query(default=5, ge=1, le=20),
     score_threshold: float = Query(default=0.0, ge=0.0, le=1.0),
-    document_id: Optional[str] = Query(default=None),
-    document_ids: Optional[list[str]] = Query(default=None),
+    document_id: Optional[str] = Query(default=None, description="Filter by single document"),
+    document_ids: Optional[list[str]] = Query(default=None, description="Filter by multiple documents"),
 ) -> SearchResponse:
     """GET endpoint for semantic search (convenience)."""
     request = SearchRequest(
@@ -98,11 +101,19 @@ async def ask(request: AskRequest) -> AskResponse:
     RAG endpoint: Retrieve relevant context and generate grounded answer.
 
     Pipeline:
-    1. Semantic search for relevant chunks
-    2. Generate answer using Gemini with retrieved context
+    1. Semantic search for relevant chunks (optionally filtered by document(s))
+    2. Generate answer using LLM with retrieved context
     3. Return answer with source citations
+
+    Supports filtering by single document_id or multiple document_ids.
     """
     try:
+        # Log incoming request for debugging
+        logger.info(
+            f"Ask request - question: '{request.question[:50]}...', \
+                document_id: {request.document_id}, document_ids: {request.document_ids}"
+        )
+
         # Retrieve context
         retriever = get_retriever()
         context = retriever.search(

@@ -12,6 +12,7 @@ dependencies = [
     "langchain-community==0.4.1",
     "langchain-core==1.2.5",
     "langchain-google-genai==4.1.2",
+    "langchain-groq==1.1.1",
     "langchain-qdrant==1.1.0",
     "pandas==2.3.3",
     "pre-commit==4.5.1",

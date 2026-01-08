@@ -1,5 +1,4 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -44,6 +43,16 @@ async def lifespan(app: FastAPI):
         logger.info("Qdrant connection verified")
     except Exception as e:
         logger.warning(f"Qdrant startup check failed: {e}")
+
+    try:
+        from app.core.embeddings import get_embedding_service  # noqa: PLC0415
+
+        es = get_embedding_service()
+        _ = es.dimension
+        es.embed_text("warmup")
+        logger.info("Embedding model warmed up")
+    except Exception as e:
+        logger.warning(f"Embedding model warmup failed: {e}")
 
     yield
     logger.info("Shutting down...")
@@ -104,4 +113,4 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, port=8000, reload=True)
+    uvicorn.run("main:app", port=8000, reload=True)

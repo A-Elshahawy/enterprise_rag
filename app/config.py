@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import List, Optional
 
@@ -19,24 +20,32 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Security
-    api_key: Optional[str] = None  # Optional API key for authentication
+    api_key: Optional[str] = None
     api_key_header: str = "X-API-Key"
-    cors_origins: str = "*"  # Comma-separated origins or "*"
+    cors_origins: str = "*"
 
     # Rate Limiting
-    rate_limit_requests: int = 100  # Requests per window
-    rate_limit_window: int = 60  # Window in seconds
+    rate_limit_requests: int = 100
+    rate_limit_window: int = 60
 
-    # Qdrant - supports both local Docker and Qdrant Cloud
+    # Qdrant
     qdrant_url: Optional[str] = None
     qdrant_host: str = "qdrant"
     qdrant_port: int = 6333
-    qdrant_api_key: Optional[str] = None
+    qdrant_api_key: Optional[str] = os.getenv("QDRANT_API_KEY", "")
     qdrant_collection_name: str = "documents"
     qdrant_timeout: float = 30.0
 
-    # Gemini API
-    google_api_key: str = ""
+    # LLM Provider Configuration
+    llm_provider: str = os.getenv("LLM_PROVIDER", "groq")  # openai, anthropic, google, groq,
+    llm_model: Optional[str] = None  # Uses provider default if not set
+    llm_temperature: float = 0.3
+
+    # Provider API Keys
+    openai_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    google_api_key: Optional[str] = os.getenv("GOOGLE_API_KEY", "")
+    groq_api_key: Optional[str] = os.getenv("GROQ_API_KEY", "")
 
     # Embedding
     embedding_model: str = "all-MiniLM-L6-v2"
