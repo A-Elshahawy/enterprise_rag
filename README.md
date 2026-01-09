@@ -1,4 +1,3 @@
-
 # 📚 Enterprise RAG Platform
 
 A production-ready Retrieval-Augmented Generation (RAG) system for intelligent document Q&A. Upload PDFs, ask questions, and get AI-powered answers with source citations and highlighting.
@@ -20,7 +19,7 @@ A production-ready Retrieval-Augmented Generation (RAG) system for intelligent d
 
 Deploy your own instance on Hugging Face Spaces (free):
 
-[![Deploy to HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Deploy%20to%20Spaces-blue)](https://huggingface.co/new-space)
+[![Try A Demo](https://img.shields.io/badge/Try%20A%20Demo-Hugging%20Face-yellow?logo=huggingface)](https://huggingface.co/spaces/A-Elshahawy/enterprise_rag)
 
 ## 📋 Table of Contents
 
