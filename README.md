@@ -1,388 +1,511 @@
-# Enterprise RAG
 
-Enterprise RAG is a small end‑to‑end Retrieval‑Augmented Generation (RAG) system:
+# 📚 Enterprise RAG Platform
 
-- **Backend**: FastAPI service that ingests PDFs, chunks and embeds them, stores vectors in Qdrant, and exposes semantic search + RAG “ask” endpoints.
-- **Vector store**: Qdrant (local Docker or Qdrant Cloud).
-- **LLM**: Google Gemini (via `google-genai` / LangChain).
-- **UI**: Streamlit app (`ui.py`) that lets non‑technical users upload PDFs, ask grounded questions, and delete documents.
+A production-ready Retrieval-Augmented Generation (RAG) system for intelligent document Q&A. Upload PDFs, ask questions, and get AI-powered answers with source citations and highlighting.
 
-The project is designed for:
+![Python](https://img.shields.io/badge/Python-3.12-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green) ![License](https://img.shields.io/badge/License-MIT-yellow) ![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 
-- Demos and interviews
-- Leads and stakeholders to see “how it works” in a **Leads / Demo** tab
-- End‑users to just upload PDFs and ask questions in a **User** tab
+## ✨ Features
 
-## 1. Architecture
+* **📄 PDF Ingestion** - Upload and process PDF documents with automatic text extraction
+* **🔍 Semantic Search** - Find relevant content using state-of-the-art embeddings
+* **💬 AI-Powered Q&A** - Get accurate answers grounded in your documents
+* **📍 Source Highlighting** - See exactly where answers come from with character-level highlighting
+* **📑 Multi-Document Filtering** - Query specific documents or your entire knowledge base
+* **🎨 Modern UI** - Clean, responsive interface inspired by NotebookLM
+* **🔌 Multi-LLM Support** - Works with Groq, OpenAI, Anthropic, and Google AI
+* **🚀 Production Ready** - Docker support, rate limiting, API key auth, comprehensive logging
 
-### 1.1 Backend (FastAPI)
+## 🖥️ Demo
 
-Entry point: [main.py](file:///d:/enterprise-rag/main.py)
+Deploy your own instance on Hugging Face Spaces (free):
 
-- **Routers**
-  - `/health` – basic and readiness health checks
-  - `/ingest` – document ingestion and deletion
-  - `/query/search` – semantic search over chunks
-  - `/query/ask` – full RAG pipeline: retrieve + generate answer + citations
-- **Core components** (under [app/core](file:///d:/enterprise-rag/app)):
-  - `document_processor.py`
-    - Extracts text from PDF with `pypdf`
-    - Cleans and splits into overlapping chunks (configurable size/overlap)
-    - Generates `document_id` and `chunk_id`s
-  - `embeddings.py`
-    - SentenceTransformers model (`all-MiniLM-L6-v2` by default)
-  - `vector_store.py`
-    - Qdrant client wrapper
-    - `upsert_chunks`: stores chunk embeddings and payloads
-    - `delete_document`: removes all points with a given `document_id`
-  - `retriever.py`
-    - Encodes queries and searches Qdrant
-    - Supports:
-      - `document_id` (single‑document filter)
-      - `document_ids` (list of docs; “files at hand” mode)
-  - `generator.py`
-    - Calls Gemini via LangChain with retrieved context to generate grounded answers
-- **Models** (under [app/models/schemas.py](file:///d:/enterprise-rag/app/models/schemas.py)):
-  - `IngestResponse`, `SearchRequest/Response`, `AskRequest/Response`, `SourceCitation`, etc.
+[![Deploy to HF Spaces](https://img.shields.io/badge/%F0%9F%A4%97-Deploy%20to%20Spaces-blue)](https://huggingface.co/new-space)
 
-Global configuration is centralized in [app/config.py](file:///d:/enterprise-rag/app/config.py) via `pydantic-settings`.
+## 📋 Table of Contents
 
-### 1.2 Vector Store (Qdrant)
+* [Quick Start](https://claude.ai/chat/86ff3a13-df1a-4041-a1ea-7bd8069674a4#-quick-start)
+* [Installation](https://claude.ai/chat/86ff3a13-df1a-4041-a1ea-7bd8069674a4#-installation)
+* [Configuration](https://claude.ai/chat/86ff3a13-df1a-4041-a1ea-7bd8069674a4#-configuration)
+* [Usage](https://claude.ai/chat/86ff3a13-df1a-4041-a1ea-7bd8069674a4#-usage)
+* [API Reference](https://claude.ai/chat/86ff3a13-df1a-4041-a1ea-7bd8069674a4#-api-reference)
+* [Architecture](https://claude.ai/chat/86ff3a13-df1a-4041-a1ea-7bd8069674a4#-architecture)
+* [Deployment](https://claude.ai/chat/86ff3a13-df1a-4041-a1ea-7bd8069674a4#-deployment)
+* [Contributing](https://claude.ai/chat/86ff3a13-df1a-4041-a1ea-7bd8069674a4#-contributing)
 
-- Configured via environment variables:
-  - `QDRANT_URL` / `QDRANT_API_KEY` for Qdrant Cloud
-  - Or `QDRANT_HOST` / `QDRANT_PORT` for local Docker Qdrant
-- Collections:
-  - Default collection name: `documents`
-  - Payload includes:
-    - `document_id`
-    - `chunk_id`
-    - `text`
-    - `page_number`
-    - `chunk_index`
-    - additional metadata
+## 🚀 Quick Start
 
-The backend validates Qdrant connectivity on startup (`create_app()` lifespan handler).
-
-### 1.3 LLM (Gemini)
-
-- Uses `google-genai` + LangChain (`langchain-google-genai`).
-- Config:
-  - `GOOGLE_API_KEY` (in environment) must be set on the backend.
-- RAG pipeline:
-  - Retrieve relevant chunks from Qdrant
-  - Build a prompt with those chunks
-  - Call Gemini to answer, returning:
-    - `answer`
-    - list of `SourceCitation` with `document_id`, `page_number`, `text_preview`, `relevance_score`
-
-### 1.4 UI (Streamlit)
-
-Single‑page app: [ui.py](file:///d:/enterprise-rag/ui.py)
-
-- Talks to the FastAPI backend via HTTP requests.
-- Reads configuration from:
-  - Streamlit secrets (`st.secrets`) – recommended for Streamlit Cloud
-  - Or environment variables
-- Main features:
-  - Password‑protected access (`UI_PASSWORD`)
-  - **Two tabs**:
-    - **Leads / Demo**
-      - Shows health, advanced ingestion/search/ask pages, and technical details for interviews/demos.
-    - **User**
-      - Simplified experience:
-        - Upload/Ingest PDFs
-        - Ask questions
-        - Delete documents
-      - Supports NotebookLM‑style **“Files at hand” vs “General knowledge”** scoping.
-
-## 2. Features
-
-### 2.1 Document Ingestion
-
-Endpoint: `POST /ingest`
-
-Flow:
-
-1. Validate file (PDF only, size limit from config).
-2. Extract text from PDF pages.
-3. Chunk text with overlap and sentence‑aware boundaries.
-4. Generate embeddings with SentenceTransformers.
-5. Upsert into Qdrant with payload metadata.
-6. Return:
-   - `document_id`
-   - filename
-   - number of chunks
-   - number of pages
-
-The UI:
-
-- In the **User** tab:
-  - Users can upload a PDF and see success state.
-  - Internally the UI remembers each ingested document in session (`st.session_state.documents`).
-- In the **Leads / Demo** tab:
-  - There is a more detailed ingest page showing last responses and technical metadata (optional).
-
-### 2.2 Semantic Search
-
-Endpoints:
-
-- `POST /query/search` (primary)
-- `GET /query/search` (convenience)
-
-Options:
-
-- `query` – natural language query
-- `top_k` – number of results
-- `score_threshold` – filter by similarity
-- `document_id` – restrict to a single document
-- `document_ids` – restrict to a list of documents (used by “files at hand” mode)
-
-The UI shows:
-
-- Result table (chunk_id, document_id, page, score, preview)
-- Altair bar chart of scores
-- Expanders with full chunk text and optional metadata
-
-### 2.3 Ask (RAG)
-
-Endpoint: `POST /query/ask`
-
-Request:
-
-- `question`
-- `top_k`
-- `temperature`
-- `document_id` (optional)
-- `document_ids` (optional; list of docs → “files at hand” mode)
-
-Response:
-
-- `answer` (Gemini)
-- `sources` – list of citations with source_id, document_id, page_number, text_preview, relevance_score
-- `model` – model name used
-
-The UI:
-
-- Display answer and collapsible list of sources.
-- In the **User** tab, users can choose:
-
-  - **Knowledge base: Files at hand**
-    - Multi‑select from PDFs ingested in the current session.
-    - The UI sends `document_ids` to `/query/ask`, so answers are limited to those docs.
-  - **Knowledge base: General knowledge**
-    - Sends no `document_ids`; the backend retrieves from the entire vector store.
-
-### 2.4 Document Deletion
-
-Endpoint: `DELETE /ingest/{document_id}`
-
-- Deletes all Qdrant points for a given `document_id`.
-
-The UI:
-
-- **User** tab:
-  - A “Delete a document” section where the user chooses from known documents (session history).
-  - No need to type `document_id` manually.
-- **Leads / Demo** tab:
-  - Advanced delete controls with access to raw `document_id` if needed.
-
-## 3. Configuration
-
-### 3.1 Backend (FastAPI)
-
-Key environment variables (see [app/config.py](file:///d:/enterprise-rag/app/config.py)):
-
-- General:
-  - `APP_NAME` (optional, defaults to `Enterprise RAG`)
-  - `APP_VERSION` (optional)
-  - `DEBUG` (default: `False`)
-- Security:
-  - `API_KEY` (optional API key for backend)
-  - `API_KEY_HEADER` (default: `X-API-Key`)
-  - `CORS_ORIGINS` (comma‑separated or `*`)
-- Qdrant:
-  - `QDRANT_URL` (for cloud; if set, used with `QDRANT_API_KEY`)
-  - `QDRANT_API_KEY` (for cloud)
-  - `QDRANT_HOST` (default `qdrant`)
-  - `QDRANT_PORT` (default `6333`)
-  - `QDRANT_COLLECTION_NAME` (default `documents`)
-- Gemini:
-  - `GOOGLE_API_KEY` (required for RAG `/query/ask`)
-- Embeddings:
-  - `EMBEDDING_MODEL`
-  - `EMBEDDING_DIMENSION`
-- Chunking:
-  - `CHUNK_SIZE`
-  - `CHUNK_OVERLAP`
-
-### 3.2 UI (Streamlit)
-
-The UI reads configuration from:
-
-- Streamlit secrets (`st.secrets`) – preferred on Streamlit Cloud.
-- Environment variables as fallback.
-
-Important keys:
-
-- `RAG_API_URL` – base URL of the FastAPI backend.
-  - Example: `http://localhost:8000` (local)
-  - Example (cloud): `https://your-api-service.onrender.com`
-- `RAG_API_KEY_HEADER` – header name for API key (matches backend `API_KEY_HEADER`).
-- `RAG_API_KEY` – API key value, if backend security is enabled.
-- `RAG_VERIFY_TLS` – `"true"` / `"false"` to enable/disable TLS verification.
-- `RAG_TIMEOUT_S` – request timeout in seconds.
-- `UI_PASSWORD` – optional password for the UI itself.
-
-The UI also normalizes `RAG_API_URL` to ensure:
-
-- There is a scheme (`http://` added if missing).
-- No double slashes at the end.
-
-## 4. Running Locally
-
-### 4.1 Prerequisites
-
-- Python 3.12+
-- Qdrant:
-  - Either run in Docker, or use Qdrant Cloud and set `QDRANT_URL` + `QDRANT_API_KEY`.
-- A Gemini API key (`GOOGLE_API_KEY`).
-
-Install dependencies:
+### Using Docker (Recommended)
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/enterprise-rag.git
+cd enterprise-rag
+
+# Set your API key
+export GROQ_API_KEY=your_groq_api_key
+
+# Run with Docker
+docker build -t enterprise-rag .
+docker run -p 7860:7860 -e GROQ_API_KEY=$GROQ_API_KEY enterprise-rag
+```
+
+Open http://localhost:7860 in your browser.
+
+### Using Python
+
+```bash
+# Clone and install
+git clone https://github.com/yourusername/enterprise-rag.git
+cd enterprise-rag
 pip install -r requirements.txt
+
+# Set environment variable
+export GROQ_API_KEY=your_groq_api_key
+
+# Run
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-or via `uv` / `pip` using `pyproject.toml`.
+## 📦 Installation
 
-### 4.2 Start Qdrant (local example)
+### Prerequisites
 
-Minimal Docker example:
+* Python 3.10+
+* 4GB RAM minimum (for embedding model)
+* API key from at least one LLM provider
+
+### Local Development Setup
 
 ```bash
-docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+# 1. Clone repository
+git clone https://github.com/yourusername/enterprise-rag.git
+cd enterprise-rag
+
+# 2. Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# or: venv\Scripts\activate  # Windows
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Create .env file
+cp .env.example .env
+# Edit .env with your API keys
+
+# 5. Run the application
+uvicorn main:app --reload --port 8000
 ```
 
-Set env vars to point to local Qdrant if needed:
+### Using Docker Compose
 
-```bash
-set QDRANT_HOST=localhost
-set QDRANT_PORT=6333
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  rag:
+    build: .
+    ports:
+      - "7860:7860"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - QDRANT_IN_MEMORY=true
+    volumes:
+      - ./data:/app/data
 ```
 
-### 4.3 Start the FastAPI backend
-
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+docker-compose up -d
 ```
 
-Or just run:
+## ⚙️ Configuration
 
-```bash
-python main.py
+### Environment Variables
+
+| Variable              | Required | Default              | Description                                                 |
+| --------------------- | -------- | -------------------- | ----------------------------------------------------------- |
+| `GROQ_API_KEY`      | Yes*     | Yes                  | Groq API key                                                |
+| `OPENAI_API_KEY`    | No       | -                    | OpenAI API key                                              |
+| `ANTHROPIC_API_KEY` | No       | -                    | Anthropic API key                                           |
+| `GOOGLE_API_KEY`    | No       | -                    | Google AI API key                                           |
+| `LLM_PROVIDER`      | No       | `groq`             | LLM provider (`groq`,`openai`,`anthropic`,`google`) |
+| `LLM_MODEL`         | No       | Auto                 | Specific model name                                         |
+| `QDRANT_IN_MEMORY`  | No       | `false`            | Use in-memory vector store                                  |
+| `QDRANT_URL`        | No       | `true`             | Qdrant Cloud URL                                            |
+| `QDRANT_API_KEY`    | No       | `true`             | Qdrant Cloud API key                                        |
+| `API_KEY`           | No       | -                    | Protect API with key                                        |
+| `DEBUG`             | No       | `false`            | Enable debug mode                                           |
+| `EMBEDDING_MODEL`   | No       | `all-MiniLM-L6-v2` | Sentence Transformers model                                 |
+| `CHUNK_SIZE`        | No       | `512`              | Text chunk size                                             |
+| `CHUNK_OVERLAP`     | No       | `50`               | Chunk overlap                                               |
+
+*At least one LLM provider API key is required.
+
+### Example .env File
+
+```env
+# LLM Provider (choose one)
+GROQ_API_KEY=gsk_xxxxxxxxxxxx
+# OPENAI_API_KEY=sk-xxxxxxxxxxxx
+# ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+
+LLM_PROVIDER=groq
+
+# Vector Store (optional - for persistence)
+# QDRANT_URL=https://xxx.cloud.qdrant.io:6333
+# QDRANT_API_KEY=xxxxxxxxxxxx
+# QDRANT_IN_MEMORY=false
+
+# Security (optional)
+# API_KEY=your-secret-api-key
+
+# Debug
+DEBUG=false
 ```
 
-### 4.4 Start the Streamlit UI
+## 📖 Usage
 
-Set `RAG_API_URL` so the UI knows where the backend is:
+### Web Interface
 
-```bash
-set RAG_API_URL=http://localhost:8000
+1. **Upload Documents**
+   * Click "Add source" in the left sidebar
+   * Select PDF files (up to 50MB each)
+   * Wait for processing to complete
+2. **Select Sources**
+   * Click document cards to select/deselect
+   * Use "Select All" to query entire knowledge base
+   * Selected documents shown in top bar
+3. **Ask Questions**
+   * Type your question in the chat input
+   * Press Enter or click Send
+   * View AI response with source citations
+4. **View Sources**
+   * Click source chips (e.g., "Page 7") to see context
+   * Full page text with highlighted chunk
+   * Relevance score and position info
+
+### API Usage
+
+```python
+import requests
+
+BASE_URL = "http://localhost:8000"
+
+# Upload a document
+with open("document.pdf", "rb") as f:
+    response = requests.post(
+        f"{BASE_URL}/ingest",
+        files={"file": f}
+    )
+    doc_id = response.json()["document_id"]
+
+# Ask a question
+response = requests.post(
+    f"{BASE_URL}/query/ask",
+    json={
+        "question": "What is the main topic of this document?",
+        "document_ids": [doc_id],
+        "top_k": 5
+    }
+)
+print(response.json()["answer"])
+
+# Semantic search
+response = requests.post(
+    f"{BASE_URL}/query/search",
+    json={
+        "query": "machine learning",
+        "top_k": 10
+    }
+)
+for result in response.json()["results"]:
+    print(f"Page {result['page_number']}: {result['text'][:100]}...")
 ```
 
-Then:
+## 📚 API Reference
+
+### Ingestion Endpoints
+
+#### `POST /ingest`
+
+Upload and process a PDF document.
+
+**Request:**
 
 ```bash
-streamlit run ui.py
+curl -X POST "http://localhost:8000/ingest" \
+  -F "file=@document.pdf"
 ```
 
-In your browser, you will see:
+**Response:**
 
-- A password prompt (if `UI_PASSWORD` is set).
-- Tabs:
-  - **Leads / Demo**
-  - **User**
-
-## 5. Deployment Notes
-
-### 5.1 Backend
-
-You can deploy the FastAPI backend to any platform that supports ASGI:
-
-- Render, Fly.io, Azure App Service, etc.
-- Use `uvicorn` with the application object `app` from `main.py`.
-
-For production:
-
-- Set `DEBUG=false`.
-- Configure proper `CORS_ORIGINS`.
-- Secure with `API_KEY` (and TLS).
-
-### 5.2 UI (Streamlit Cloud)
-
-For Streamlit Cloud:
-
-1. Point the app to `ui.py`.
-2. In Streamlit **Secrets**, define:
-   - `RAG_API_URL`: URL of your deployed FastAPI backend.
-   - `RAG_API_KEY_HEADER` / `RAG_API_KEY` if you use backend API key auth.
-   - `UI_PASSWORD` if you want password protection.
-3. The UI will automatically:
-   - Normalize the API base URL.
-   - Use secure backend connection.
-   - Hide Streamlit default menu/footer for a cleaner look.
-
-## 6. Development & Quality
-
-### 6.1 Pre-commit hooks
-
-The repo is configured with pre‑commit:
-
-- `ruff` / `ruff-format`
-- `mypy`
-- basic hygiene checks (EoF, trailing whitespace, YAML/TOML validation, etc.)
-
-To run the same checks manually:
-
-```bash
-bash check.sh
+```json
+{
+  "document_id": "a4aee82f18829911",
+  "filename": "document.pdf",
+  "chunks": 42,
+  "pages": 10,
+  "message": "Document ingested: 42 chunks embedded and stored"
+}
 ```
 
-or directly:
+#### `GET /ingest/documents`
+
+List all ingested documents.
+
+**Response:**
+
+```json
+{
+  "documents": [
+    {"document_id": "a4aee82f18829911", "filename": "document.pdf"}
+  ],
+  "total": 1
+}
+```
+
+#### `DELETE /ingest/{document_id}`
+
+Delete a document and all its chunks.
+
+#### `POST /ingest/clear`
+
+Clear entire knowledge base.
+
+### Query Endpoints
+
+#### `POST /query/ask`
+
+RAG question answering with source citations.
+
+**Request:**
+
+```json
+{
+  "question": "What are the key findings?",
+  "document_ids": ["a4aee82f18829911"],
+  "top_k": 5,
+  "temperature": 0.3
+}
+```
+
+**Response:**
+
+```json
+{
+  "question": "What are the key findings?",
+  "answer": "The key findings include...",
+  "sources": [
+    {
+      "source_id": 1,
+      "document_id": "a4aee82f18829911",
+      "page_number": 3,
+      "text_preview": "Our analysis reveals...",
+      "relevance_score": 0.89,
+      "char_start": 1250,
+      "char_end": 1890
+    }
+  ],
+  "model": "llama-3.3-70b-versatile"
+}
+```
+
+#### `POST /query/search`
+
+Semantic search across documents.
+
+**Request:**
+
+```json
+{
+  "query": "neural networks",
+  "top_k": 10,
+  "score_threshold": 0.5,
+  "document_ids": null
+}
+```
+
+#### `GET /ingest/documents/{document_id}/page/{page_number}/text`
+
+Get full page text for highlighting.
+
+### Health Endpoints
+
+#### `GET /health`
+
+Basic health check.
+
+#### `GET /ready`
+
+Readiness check with dependency status.
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Frontend (index.html)                     │
+│                    Modern UI with Chat Interface                 │
+└─────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                         FastAPI Backend                          │
+├─────────────────┬─────────────────┬─────────────────────────────┤
+│   /ingest       │   /query        │   /health                   │
+│   - Upload PDF  │   - /ask (RAG)  │   - Health check            │
+│   - List docs   │   - /search     │   - Readiness               │
+│   - Delete      │                 │                             │
+└────────┬────────┴────────┬────────┴─────────────────────────────┘
+         │                 │
+         ▼                 ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────────────┐
+│ Document        │ │ Retriever       │ │ Generator               │
+│ Processor       │ │                 │ │                         │
+│ - PDF Extract   │ │ - Embed query   │ │ - Build prompt          │
+│ - Chunking      │ │ - Vector search │ │ - LLM completion        │
+│ - Position track│ │ - Filter docs   │ │ - Citation extraction   │
+└────────┬────────┘ └────────┬────────┘ └────────┬────────────────┘
+         │                   │                   │
+         ▼                   ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────────────┐
+│ Embedding       │ │ Vector Store    │ │ LLM Providers           │
+│ Service         │ │ (Qdrant)        │ │                         │
+│                 │ │                 │ │ - Groq (default)        │
+│ Sentence        │ │ - In-memory     │ │ - OpenAI                │
+│ Transformers    │ │ - Qdrant Cloud  │ │ - Anthropic             │
+│                 │ │ - Self-hosted   │ │ - Google AI             │
+└─────────────────┘ └─────────────────┘ └─────────────────────────┘
+```
+
+### Data Flow
+
+1. **Ingestion Pipeline**
+   ```
+   PDF → Extract Text → Chunk with Overlap → Embed → Store in Qdrant
+   ```
+2. **Query Pipeline**
+   ```
+   Question → Embed → Vector Search → Retrieve Context → LLM Generate → Response
+   ```
+
+### Project Structure
+
+```
+enterprise-rag/
+├── app/
+│   ├── api/
+│   │   └── routes/
+│   │       ├── health.py      # Health endpoints
+│   │       ├── ingest.py      # Document ingestion
+│   │       └── query.py       # Search and RAG
+│   ├── core/
+│   │   ├── document_processor.py  # PDF processing
+│   │   ├── embeddings.py          # Embedding service
+│   │   ├── generator.py           # LLM generation
+│   │   ├── retriever.py           # Semantic search
+│   │   └── vector_store.py        # Qdrant operations
+│   ├── models/
+│   │   └── schemas.py         # Pydantic models
+│   ├── static/
+│   │   └── index.html         # Frontend UI
+│   ├── config.py              # Settings
+│   ├── exceptions.py          # Error handlers
+│   ├── middleware.py          # Auth, logging
+│   └── utils.py               # Utilities
+├── main.py                    # Application entry
+├── Dockerfile
+├── requirements.txt
+└── README.md
+```
+
+## 🚀 Deployment
+
+### Hugging Face Spaces (Free)
+
+1. Create account at https://huggingface.co
+2. Get Groq API key at https://console.groq.com
+3. Create new Space with Docker SDK
+4. Upload project files
+5. Add `GROQ_API_KEY` secret
+6. Wait for build (~5 minutes)
+
+See [Deployment Guide](https://claude.ai/chat/docs/DEPLOYMENT.md) for detailed instructions.
+
+### Docker (Self-hosted)
 
 ```bash
-ruff check .
+docker build -t enterprise-rag .
+docker run -d \
+  -p 7860:7860 \
+  -e GROQ_API_KEY=your_key \
+  -e QDRANT_URL=https://your-qdrant.cloud.qdrant.io:6333 \
+  -e QDRANT_API_KEY=your_qdrant_key \
+  enterprise-rag
+```
+
+## *Kubernetes : Comming Soon*
+
+## 🔧 Development
+
+### Running Tests
+
+```bash
+# Install dev dependencies
+pip install -r requirements-dev.txt
+
+# Run tests
+pytest
+
+# With coverage
+pytest --cov=app --cov-report=html
+```
+
+### Code Quality
+
+```bash
+# Format code
 ruff format .
-mypy app ui.py
+
+# Lint
+ruff check .
+
+# Type checking
+mypy app/
 ```
 
-### 6.2 Code Style
+### Pre-commit Hooks
 
-- Type annotations (Python 3.12, Pydantic v2).
-- FastAPI routers grouped by domain (`health`, `ingest`, `query`).
-- Vector store wrapped behind `VectorStore` for easier swapping.
-- UI avoids exposing internal details to end‑users by default, but the **Leads / Demo** tab keeps everything accessible for debugging and explanation.
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
 
-## 7. Typical Flows
+## 🤝 Contributing
 
-### 7.1 NotebookLM‑style “Files at hand” flow
+Contributions are welcome! Please:
 
-1. Go to **User** tab.
-2. Upload one or more PDFs (Ingest section).
-3. In the Ask section:
-   - Choose **Knowledge base: Files at hand**.
-   - Optionally select a subset of uploaded PDFs.
-4. Ask a question.
-5. Backend receives `document_ids` for those PDFs and restricts retrieval to them.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-### 7.2 General knowledge flow
+## 📄 License
 
-1. Ingest many PDFs over time.
-2. In the UI, choose **Knowledge base: General knowledge**.
-3. Ask questions without scoping.
-4. Backend retrieves from the full collection in Qdrant.
+This project is licensed under the MIT License - see the [LICENSE](https://claude.ai/chat/LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+* [FastAPI](https://fastapi.tiangolo.com/) - Modern web framework
+* [Qdrant](https://qdrant.tech/) - Vector database
+* [Sentence Transformers](https://www.sbert.net/) - Embeddings
+* [LangChain](https://langchain.com/) - LLM framework
+* [Groq](https://groq.com/) - Fast LLM inference
 
 ---
 
-This README is focused on the current code layout (`app/` + `ui.py`). If you change the project structure or add new services, update the relevant sections accordingly.
+<p align="center">
+  Made with ❤️ for the AI community
+</p>
